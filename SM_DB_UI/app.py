@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from db import get_db_cursor, connection_pool
 from auth import auth_bp, login_manager
+from flask import Blueprint
+from leave import leave_bp
 import os
 import re
 import logging
@@ -18,9 +20,9 @@ app.secret_key = os.getenv('SECRET_KEY', 'your-strong-secret-key-here-change-in-
 
 # Setup Flask-Login
 login_manager.init_app(app)
-login_manager.login_view = 'auth.login'   # where to redirect if not logged in
+login_manager.login_view = 'auth.login'
 
-# Register the authentication blueprint
+# Register authentication blueprint
 app.register_blueprint(auth_bp)
 
 # Setup logging
@@ -29,7 +31,7 @@ handler.setLevel(logging.INFO)
 app.logger.addHandler(handler)
 app.logger.setLevel(logging.INFO)
 
-
+# ---------- Helper functions (used by leads) ----------
 def validate_form_data(data):
     """Validate all form data"""
     errors = []
@@ -41,7 +43,7 @@ def validate_form_data(data):
         'city': {'required': True, 'type': str, 'max': 100},
         'category_type': {'required': True, 'type': str, 'max': 100},
         'address': {'required': False, 'type': str, 'max': 500},
-        'contact_number': {'required': True, 'type': str, 'max': 500, 'message': 'Contact number is required'},#'contact_number': {'required': True, 'type': str, 'pattern': r'^[\d\+\-\s]{10,15}$', 'message': 'Please enter a valid contact number (10-15 digits)'},
+        'contact_number': {'required': True, 'type': str, 'max': 500, 'message': 'Contact number is required'},
         'whatsapp': {'required': False, 'type': str, 'pattern': r'^[\d\+\-\s]{10,15}$', 'message': 'Please enter a valid WhatsApp number'},
         'email': {'required': False, 'type': str, 'pattern': r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', 'message': 'Please enter a valid email address'},
         'website': {'required': False, 'type': str, 'max': 255},
@@ -103,7 +105,7 @@ def validate_form_data(data):
     return errors, validated
 
 def get_stats():
-    """Get dashboard statistics"""
+    """Get dashboard statistics for leads"""
     try:
         with get_db_cursor() as cur:
             # Total leads
@@ -127,18 +129,21 @@ def get_stats():
         app.logger.error(f"Error getting stats: {e}")
         return {'total': 0, 'high_priority': 0, 'this_month': 0}
 
-@app.route("/")
+# ---------- Leads Blueprint ----------
+leads_bp = Blueprint('leads', __name__, url_prefix='/leads')
+
+@leads_bp.route("/")
 @login_required
 def home():
     stats = get_stats()
     return render_template("home.html", stats=stats)
 
-@app.route("/new")
+@leads_bp.route("/new")
 @login_required
 def new_entry():
     return render_template("home.html", show_form=True)
 
-@app.route("/insert", methods=["POST"])
+@leads_bp.route("/insert", methods=["POST"])
 @login_required
 def insert():
     try:
@@ -153,7 +158,16 @@ def insert():
                 flash(error)
             return render_template("home.html", show_form=True, form_data=form_data)
 
-        # Prepare data tuple for insertion
+        # Duplicate check for business name
+        business_name = validated_data['business_name']
+        with get_db_cursor() as cur:
+            cur.execute("SELECT id FROM business_db.business_leads WHERE business_name ILIKE %s", (business_name,))
+            existing = cur.fetchone()
+            if existing:
+                flash(f"⚠️ Business '{business_name}' already exists! Please use a different name.")
+                return render_template("home.html", show_form=True, form_data=form_data)
+
+        # Prepare data tuple (including created_by)
         data_tuple = (
             validated_data['business_name'],
             validated_data['city'],
@@ -173,7 +187,8 @@ def insert():
             validated_data.get('website_requirement', ''),
             validated_data.get('remarks', ''),
             validated_data.get('lead_indication', ''),
-            validated_data.get('priority_score', 5)
+            validated_data.get('priority_score', 5),
+            current_user.username
         )
 
         with get_db_cursor(commit=True) as cur:
@@ -183,20 +198,20 @@ def insert():
                 whatsapp, email, website, instagram, facebook, google, reviews,
                 digital_marketing_requirement, software_requirment,
                 mobileapp_requirement, website_requirement, remarks,
-                lead_indication, priority_score
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                lead_indication, priority_score, created_by
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, data_tuple)
 
         flash("✅ Entry added successfully!")
-        app.logger.info(f"New entry inserted by {request.remote_addr}")
+        app.logger.info(f"New entry inserted by {current_user.username}")
 
     except Exception as e:
         app.logger.error(f"Insert error: {e}")
         flash(f"❌ Error adding entry: {str(e)}")
 
-    return redirect(url_for("home"))
+    return redirect(url_for("leads.home"))
 
-@app.route("/show")
+@leads_bp.route("/show")
 @login_required
 def show():
     # Pagination parameters
@@ -204,11 +219,11 @@ def show():
     per_page = 20
     offset = (page - 1) * per_page
 
-    # Get search filters from URL query parameters
+    # Get search filters
     city_filter = request.args.get('city', '').strip()
     category_filter = request.args.get('category', '').strip()
 
-    # Fetch distinct cities and categories for dropdowns (unchanged)
+    # Fetch distinct cities and categories
     try:
         with get_db_cursor() as cur:
             cur.execute("SELECT DISTINCT city FROM business_db.business_leads WHERE city IS NOT NULL AND city != '' ORDER BY city")
@@ -221,10 +236,9 @@ def show():
         cities = []
         categories = []
 
-    # Build conditions based on filters
+    # Build conditions
     conditions = []
     params = []
-
     if city_filter:
         conditions.append("city = %s")
         params.append(city_filter)
@@ -232,7 +246,7 @@ def show():
         conditions.append("category_type = %s")
         params.append(category_filter)
 
-    # First, get the total count (for pagination)
+    # Count total
     count_query = "SELECT COUNT(*) FROM business_db.business_leads"
     if conditions:
         count_query += " WHERE " + " AND ".join(conditions)
@@ -245,13 +259,11 @@ def show():
         app.logger.error(f"Count query error: {e}")
         total = 0
 
-    # Now get the paginated data
+    # Paginated data
     data_query = "SELECT * FROM business_db.business_leads"
     if conditions:
         data_query += " WHERE " + " AND ".join(conditions)
     data_query += " ORDER BY id DESC LIMIT %s OFFSET %s"
-
-    # Add limit and offset to the parameters
     paginated_params = params + [per_page, offset]
 
     try:
@@ -263,7 +275,6 @@ def show():
         rows = []
         flash(f"❌ Error loading data: {str(e)}")
 
-    # Determine if there are more records
     has_more = (offset + per_page) < total
 
     return render_template("home.html",
@@ -275,26 +286,24 @@ def show():
                            page=page,
                            has_more=has_more,
                            total=total)
-        
-@app.route("/edit/<id>")
+
+@leads_bp.route("/edit/<id>")
 @login_required
 def edit(id):
     try:
         with get_db_cursor() as cur:
             cur.execute("SELECT * FROM business_db.business_leads WHERE id=%s", (id,))
             row = cur.fetchone()
-        
         if not row:
             flash(f"❌ Record {id} not found")
-            return redirect(url_for("show"))
-            
+            return redirect(url_for("leads.show"))
         return render_template("home.html", edit=row, show_form=True)
     except Exception as e:
         app.logger.error(f"Edit error: {e}")
         flash(f"❌ Error: {str(e)}")
-        return redirect(url_for("show"))
+        return redirect(url_for("leads.show"))
 
-@app.route("/update/<id>", methods=["POST"])
+@leads_bp.route("/update/<id>", methods=["POST"])
 @login_required
 def update(id):
     try:
@@ -307,7 +316,6 @@ def update(id):
         if errors:
             for error in errors:
                 flash(error)
-            # Get the current record to show in form
             with get_db_cursor() as cur:
                 cur.execute("SELECT * FROM business_db.business_leads WHERE id=%s", (id,))
                 row = cur.fetchone()
@@ -369,25 +377,22 @@ def update(id):
         app.logger.error(f"Update error: {e}")
         flash(f"❌ Error updating: {str(e)}")
 
-    return redirect(url_for("show"))
+    return redirect(url_for("leads.show"))
 
-@app.route("/delete/<id>", methods=["POST"])
+@leads_bp.route("/delete/<id>", methods=["POST"])
 @login_required
 def delete(id):
     try:
         with get_db_cursor(commit=True) as cur:
             cur.execute("DELETE FROM business_db.business_leads WHERE id=%s", (id,))
-        
         flash(f"✅ Record {id} deleted successfully")
         app.logger.info(f"Record {id} deleted by {request.remote_addr}")
-        
     except Exception as e:
         app.logger.error(f"Delete error: {e}")
         flash(f"❌ Error deleting record: {str(e)}")
-    
-    return redirect(url_for("show"))
+    return redirect(url_for("leads.show"))
 
-@app.route("/health")
+@leads_bp.route("/health")
 @login_required
 def health():
     """Health check endpoint"""
@@ -398,14 +403,29 @@ def health():
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}, 500
 
-# Clean up on exit
-@atexit.register
+# ---------- Dashboard ----------
+@app.route('/dashboard')
 @login_required
+def dashboard():
+    return render_template('dashboard.html')
+
+# ---------- Register Blueprints ----------
+app.register_blueprint(leads_bp)
+app.register_blueprint(leave_bp)
+
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    else:
+        return redirect(url_for('auth.login'))
+
+# ---------- Cleanup ----------
+@atexit.register
 def close_pool():
     if connection_pool:
         connection_pool.closeall()
         app.logger.info("Connection pool closed")
 
 if __name__ == "__main__":
-    # For production, use gunicorn instead
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -29,14 +29,12 @@ def login():
         with get_db_cursor() as cur:
             cur.execute("SELECT id, password_hash FROM business_db.users WHERE username = %s", (username,))
             user_data = cur.fetchone()
-            if user_data and check_password_hash(user_data[1], password):
+            if user_data and check_password_hash(user_data[1], password):                
                 user = User(id=user_data[0], username=username)
                 login_user(user)
                 flash("Logged in successfully.")
-                # Redirect to the page the user wanted, or home
                 next_page = request.args.get('next')
-                return redirect(next_page) if next_page else redirect(url_for("home"))
-        flash("Invalid username or password.")
+                return redirect(next_page) if next_page else redirect(url_for('dashboard'))
     return render_template("login.html")
 
 @auth_bp.route("/logout")

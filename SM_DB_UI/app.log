@@ -1,0 +1,89 @@
+New entry inserted by Mithun
+Exception on /leave/admin [GET]
+Traceback (most recent call last):
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Mithun\Desktop\New folder\New folder\leads-db\SM_DB_UI\leave.py", line 163, in admin
+    cur.execute("""
+    ~~~~~~~~~~~^^^^
+        SELECT l.id, l.username, l.leave_type, l.start_date, l.end_date,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        ORDER BY l.created_at DESC
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    """)
+    ^^^^
+psycopg2.errors.UndefinedColumn: column u.id does not exist
+LINE 5:             LEFT JOIN users u ON l.user_id = u.id
+                                                     ^
+HINT:  Perhaps you meant to reference the column "l.id".
+
+Exception on /leave/admin [GET]
+Traceback (most recent call last):
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Mithun\Desktop\New folder\New folder\leads-db\SM_DB_UI\leave.py", line 163, in admin
+    cur.execute("""
+    ~~~~~~~~~~~^^^^
+        SELECT l.id, l.username, l.leave_type, l.start_date, l.end_date,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        ORDER BY l.created_at DESC
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    """)
+    ^^^^
+psycopg2.errors.UndefinedColumn: column u.id does not exist
+LINE 5:             LEFT JOIN users u ON l.user_id = u.id
+                                                     ^
+HINT:  Perhaps you meant to reference the column "l.id".
+
+Exception on /leave/admin [GET]
+Traceback (most recent call last):
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Mithun\AppData\Roaming\Python\Python314\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Mithun\Desktop\New folder\New folder\leads-db\SM_DB_UI\leave.py", line 163, in admin
+    cur.execute("""
+    ~~~~~~~~~~~^^^^
+        SELECT l.id, l.username, l.leave_type, l.start_date, l.end_date,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        ORDER BY l.created_at DESC
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    """)
+    ^^^^
+psycopg2.errors.UndefinedColumn: column u.id does not exist
+LINE 5:             LEFT JOIN users u ON l.user_id = u.id
+                                                     ^
+HINT:  Perhaps you meant to reference the column "l.id".
+
+Connection pool closed
